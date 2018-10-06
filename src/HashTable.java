@@ -294,7 +294,7 @@ public class HashTable<K, V> implements Map<K, V> {
     private volatile Set<K> keySet = new KeySet();
     private volatile Collection<V> values = new ValueCollection();
 
-    private <T> java.util.Iterator<T> getIterator(int type) {
+    public  <T> java.util.Iterator<T> getIterator(int type) {
         if (size == 0) {
             return Collections.emptyIterator();
         } else {

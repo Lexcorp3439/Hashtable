@@ -25,7 +25,7 @@ class HashTableTest {
         assertEquals(1, test.put("1", 1));
         assertEquals("dsfsd", test.put(34, "dsfsd"));
         assertEquals(2, test.put("2", 2));
-        assertEquals(true, test.put(new HashSet<>(), true));
+        assertEquals(true, test.put(new HashSet(), true));
         assertEquals(4, test.put("4", 4));
         assertEquals(5, test.put("5", 5));
 
@@ -232,7 +232,7 @@ class HashTableTest {
 
         assertEquals("[1, 2, 3, 4, 5, 35]", test.keySet().toString());
         test.clear();
-        assertEquals(new HashSet<>(), test.keySet());
+        assertEquals(new HashSet(), test.keySet());
     }
 
     @Test
@@ -292,7 +292,7 @@ class HashTableTest {
         test.put("1", 1);
         test.put(34, "dsfsd");
         test.put("2", 2);
-        test.put(new HashSet<>(), true);
+        test.put(new HashSet(), true);
         test.put("4", 4);
         test.put("5", 5);
         test.put("3", 3);
