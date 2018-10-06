@@ -1,2 +1,7 @@
-.idea
+'#' Ignore objects and archives.
+
+.idea/
+
+.out/
+
 Hashtable.iml
