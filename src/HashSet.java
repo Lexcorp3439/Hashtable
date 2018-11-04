@@ -1,9 +1,7 @@
-import org.jetbrains.annotations.NotNull;
-
 import java.util.*;
 
-public class HashSet extends AbstractSet implements Set{
-    private HashTable hashTable = new HashTable();
+public class HashSet<K> extends AbstractSet<K> implements Set<K>{
+    private HashTable hashTable = new HashTable<K, Object>();
     private Object SIMPLE = true;
     @Override
     public int size() {
@@ -20,14 +18,13 @@ public class HashSet extends AbstractSet implements Set{
         return hashTable.containsKey(o);
     }
 
-    @NotNull
     @Override
     public Iterator iterator() {
-        return hashTable.getIterator(2);
+        return hashTable.getIterator(HashTable.Type.KEYS);
     }
 
     @Override
-    public boolean add(Object o) {
+    public boolean add(K o) {
         return null != hashTable.put(o, SIMPLE);
     }
 

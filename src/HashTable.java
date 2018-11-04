@@ -18,10 +18,9 @@ public class HashTable<K, V> implements Map<K, V> {
     private float loadFactor;
     private int capacity;
     private int size = 0;
-    private int lastSize;
 
-    private volatile Node[] hashTable;
-    private volatile boolean[] deleted;
+    private Node[] hashTable;
+    private boolean[] deleted;
 
     @SuppressWarnings("WeakerAccess")
     public HashTable() {
@@ -31,14 +30,6 @@ public class HashTable<K, V> implements Map<K, V> {
         hashTable = new HashTable.Node[capacity];
         entrySet = new EntrySet();
         deleted = new boolean[capacity];
-    }
-
-    public HashTable(boolean link) {
-        loadFactor = LOAD_FACTOR;
-        this.capacity = DEFAULT_CAPACITY;
-        //noinspection unchecked
-        hashTable = new HashTable.Node[capacity];
-        setDeleted();
     }
 
     public HashTable(int capacity) {
@@ -51,7 +42,6 @@ public class HashTable<K, V> implements Map<K, V> {
         }
         //noinspection unchecked
         hashTable = new HashTable.Node[capacity];
-        setDeleted();
     }
 
     public HashTable(float loadFactor, int capacity) {
@@ -69,20 +59,19 @@ public class HashTable<K, V> implements Map<K, V> {
         }
         //noinspection unchecked
         hashTable = new HashTable.Node[capacity];
-        setDeleted();
     }
 
     @Override
-    public synchronized int size() {
+    public int size() {
         return size;
     }
 
     @Override
-    public synchronized boolean isEmpty() {
+    public boolean isEmpty() {
         return size == 0;
     }
 
-    public synchronized int contains(Object key) {
+    private int contains(Object key) {
         int n = -1;
         int hash1 = hashCode1(key);
         int hash2 = hashCode2(key);
@@ -91,16 +80,19 @@ public class HashTable<K, V> implements Map<K, V> {
             n++;
             int index = (hash1 + n * hash2) % (capacity - 1);
             Map.Entry<K, V> node = hashTable[index];
-            if (node != null && deleted[index]
-                    && node.getKey().equals(key)) {
-                return index;
+            if (node != null && node.getKey().equals(key)) {
+                if (!deleted[index]) {
+                    return -1;
+                } else {
+                    return index;
+                }
             }
         }
         return -1;
     }
 
     @Override
-    public synchronized boolean containsKey(Object key) {
+    public boolean containsKey(Object key) {
         if (key == null) {
             throw new NullPointerException();
         }
@@ -108,7 +100,7 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     @Override
-    public synchronized boolean containsValue(Object value) {
+    public boolean containsValue(Object value) {
         if (value == null) {
             throw new NullPointerException();
         }
@@ -123,7 +115,7 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     @Override
-    public synchronized V get(Object key) {
+    public V get(Object key) {
         int index = contains(key);
         if (index < 0) {
             return null;
@@ -133,13 +125,18 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     @Override
-    public synchronized V put(K key, V value) {
-        if (containsKey(key)) {
+    public V put(K key, V value) {
+        if (contains(key) >= 0) {
             return null;
         }
-        size++;
-        int index = getIndex(key);
-        Node newNode = new Node(key.hashCode(), key, value, size - 1);
+
+        float k = (float) ++size / capacity;
+        if (k > loadFactor) {
+            rehash();
+        }
+
+        int index = getFreeIndex(key);
+        Node newNode = new Node(key, value);
         hashTable[index] = newNode;
         deleted[index] = true;
 
@@ -147,7 +144,7 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     @Override
-    public synchronized V remove(Object key) {
+    public V remove(Object key) {
         int index = contains(key);
 
         if (index < 0) {
@@ -160,14 +157,14 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     @Override
-    public synchronized void putAll(@NotNull Map<? extends K, ? extends V> m) {
+    public void putAll(@NotNull Map<? extends K, ? extends V> m) {
         for (Map.Entry<? extends K, ? extends V> elem : m.entrySet()) {
             put(elem.getKey(), elem.getValue());
         }
     }
 
     @Override
-    public synchronized void clear() {
+    public void clear() {
         for (int i = 0; i < capacity; i++) {
             hashTable[i] = null;
         }
@@ -185,17 +182,13 @@ public class HashTable<K, V> implements Map<K, V> {
         }
     }
 
-    private int getIndex(K key) {
+    private int getFreeIndex(K key) {
         int n = -1;
-        float k = (float) size / capacity;
 
-        if (k > loadFactor) {
-            rehash();
-        }
         while (true) {
             n++;
             int index = (hashCode1(key) + n * hashCode2(key)) % (capacity - 1);
-            if (hashTable[index] == null) {
+            if (!deleted[index]) {
                 return index;
             }
         }
@@ -226,19 +219,19 @@ public class HashTable<K, V> implements Map<K, V> {
         int old = capacity;
         capacity *= 2;
         //noinspection unchecked
-        HashTable<K, V>.Node[] between = Arrays.copyOf(hashTable, capacity);
+        HashTable<K, V>.Node[] between = new HashTable.Node[capacity];
         loadFactor += (1 - loadFactor) / 2;
         //noinspection unchecked
-        hashTable = new HashTable.Node[capacity];
-        setDeleted();
+        var newDeleted = new boolean[capacity];
         for (int i = 0; i < old; i++) {
-            if (between[i] != null) {
-                int index = getIndex(between[i].getKey());
-                hashTable[index] = between[i];
-                deleted[index] = true;
-
+            if (between[i] != null && !deleted[i]) {
+                int index = getFreeIndex(hashTable[i].getKey());
+                between[index] = hashTable[i];
+                newDeleted[index] = true;
             }
         }
+        deleted = newDeleted;
+        hashTable = between;
     }
 
     @Override
@@ -247,16 +240,18 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     @Override
-    public synchronized boolean equals(Object obj) {
+    public boolean equals(Object obj) {
         if (obj == this) {
             return true;
         }
-        if (!(obj instanceof HashTable)) {
+        if (!(obj instanceof Map)) {
             return false;
         }
-
+        if (((Map) obj).size() != this.size){
+            return false;
+        }
         @SuppressWarnings("unchecked")
-        Iterator<Map.Entry<K, V>> iterator = ((HashTable<K, V>) obj).entrySet.iterator();
+        Iterator<Map.Entry<K, V>> iterator = ((Map) obj).entrySet().iterator();
         for (; iterator.hasNext(); ) {
             Map.Entry<K, V> elem = iterator.next();
             K key = elem.getKey();
@@ -287,18 +282,17 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
 
-    private final int KEYS = 2;
-    private final int VALUES = 3;
+    enum Type {ENTRY ,KEYS, VALUES}
 
-    private volatile Set<Map.Entry<K, V>> entrySet = new EntrySet();
-    private volatile Set<K> keySet = new KeySet();
-    private volatile Collection<V> values = new ValueCollection();
+    private Set<Map.Entry<K, V>> entrySet = new EntrySet();
+    private Set<K> keySet = new KeySet();
+    private Collection<V> values = new ValueCollection();
 
-    public  <T> java.util.Iterator<T> getIterator(int type) {
+    <T> java.util.Iterator<T> getIterator(Type type) {
         if (size == 0) {
             return Collections.emptyIterator();
         } else {
-            return new MyIterator<>(type);  //посмотреть и проверить
+            return new MyIterator<>(type);
         }
     }
 
@@ -311,7 +305,7 @@ public class HashTable<K, V> implements Map<K, V> {
     private class ValueCollection extends AbstractCollection<V> {
         @NotNull
         public Iterator<V> iterator() {
-            return getIterator(VALUES);
+            return getIterator(Type.VALUES);
         }
 
         public int size() {
@@ -336,7 +330,7 @@ public class HashTable<K, V> implements Map<K, V> {
     private class KeySet extends AbstractSet<K> {
         @NotNull
         public java.util.Iterator<K> iterator() {
-            return getIterator(KEYS);
+            return getIterator(Type.KEYS);
         }
 
         public int size() {
@@ -366,7 +360,7 @@ public class HashTable<K, V> implements Map<K, V> {
     class EntrySet extends AbstractSet<Map.Entry<K, V>> {
         @NotNull
         public Iterator<Map.Entry<K, V>> iterator() {
-            return getIterator(0);
+            return getIterator(Type.ENTRY);
         }
 
         public boolean add(Map.Entry<K, V> o) {
@@ -405,12 +399,12 @@ public class HashTable<K, V> implements Map<K, V> {
     class MyIterator<T> implements java.util.Iterator<T> {
         Node[] table = HashTable.this.hashTable;
         boolean[] del = HashTable.this.deleted;
-        int type;
+        Type type;
         int index = -1;
         int count = 0;
         int size1 = HashTable.this.size;
 
-        MyIterator(int type) {
+        MyIterator(Type type) {
             this.type = type;
         }
 
@@ -428,7 +422,7 @@ public class HashTable<K, V> implements Map<K, V> {
                     Map.Entry node = table[index];
                     count++;
                     //noinspection unchecked
-                    return type == KEYS ? (T) node.getKey() : (type == VALUES ? (T) node.getValue() : (T) node);
+                    return type == Type.KEYS ? (T) node.getKey() : (type == Type.VALUES ? (T) node.getValue() : (T) node);
                 } else {
                     index++;
                 }
@@ -438,14 +432,8 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     class Node implements Map.Entry<K, V> {
-        private int hash;
         private K key;
         private V value;
-        private int index;
-
-        int getHash() {
-            return hash;
-        }
 
         public K getKey() {
             return key;
@@ -465,16 +453,9 @@ public class HashTable<K, V> implements Map<K, V> {
             return old;
         }
 
-        public int getIndex() {
-            return index;
-        }
-
-
-        Node(int hash, K key, V value, int index) {
-            this.hash = hash;
+        Node(K key, V value) {
             this.key = key;
             this.value = value;
-            this.index = index;
         }
 
         public final String toString() {
@@ -496,12 +477,4 @@ public class HashTable<K, V> implements Map<K, V> {
             return false;
         }
     }
-
-    private void setDeleted() {
-        deleted = new boolean[capacity];
-        for (int i = 0; i < capacity; i++) {
-            deleted[i] = false;
-        }
-    }
-
 }
