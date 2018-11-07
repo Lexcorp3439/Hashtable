@@ -250,9 +250,41 @@ class HashTableTest {
         assertEquals("[]", test.keySet().toString());
     }
 
+    @Test
+    void special(){
+        HashTable<String, Integer> test = new HashTable(value -> {
+            String s = (String) value;
+            int h = 0;
+            int length = s.length() >> 1;
+            for (int i = 0; i < length; i++) {
+                h = 33 * h + s.charAt(i);
+            }
+            return h;
+        });
+        assertEquals(Integer.valueOf(1), test.put("sdgfg", 1));
+        assertEquals(Integer.valueOf(2), test.put("sdgfgds", 2));
+        assertNull(test.put("sdgfgds", 4));
+        assertEquals(Integer.valueOf(3), test.put("sdgfgsdfsd", 3));
+        assertEquals(Integer.valueOf(4), test.put("fffffffffggh", 4));
+        assertEquals(Integer.valueOf(5), test.put("fffffffffgghsdfa;,f;lv,fd;lf,vfd;,bfd;,da;fd;", 5));
+
+        assertTrue(test.containsValue(1));
+        assertTrue(test.containsValue(5));
+        assertEquals(Integer.valueOf(2), test.remove("sdgfgds"));
+        assertFalse(test.containsValue(35));
+
+        assertEquals(Integer.valueOf(1), test.put("s", 1));
+        assertEquals(Integer.valueOf(2), test.put("sdg", 2));
+        assertEquals(Integer.valueOf(3), test.put("sdgfgsdf", 3));
+        assertEquals(Integer.valueOf(4), test.put("ffffffggh", 4));
+        assertEquals(Integer.valueOf(5), test.put("ffffgghsdfa;,f;lv,fd;lf,vfd;,bfd;,da;fd;", 5));
+
+        setHashtable(test);
+        assertTrue(test.containsValue(1));
+    }
+
 
     ////Special test`s function
-
     private void setHashtable(Map<String, Integer> test) {
         test.put("1", 1);
         test.put("2", 1);

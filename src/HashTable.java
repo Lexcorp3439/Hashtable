@@ -1,5 +1,3 @@
-import org.jetbrains.annotations.NotNull;
-
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
 import java.util.Arrays;
@@ -11,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
+@SuppressWarnings("ALL")
 public class HashTable<K, V> implements Map<K, V> {
     private final int DEFAULT_CAPACITY = 8;
     private final int MAXIMUM_CAPACITY = 16;
@@ -18,18 +17,35 @@ public class HashTable<K, V> implements Map<K, V> {
     private float loadFactor;
     private int capacity;
     private int size = 0;
+    private SecondHash hash;
+    private SecondHash defauktHash = new SecondHash() {
+        @Override
+        public int hashCode2(Object value) {
+            K key = (K) value;
+            return key.hashCode();
+        }
+    };
 
     private Node[] hashTable;
     private boolean[] deleted;
 
-    @SuppressWarnings("WeakerAccess")
     public HashTable() {
         loadFactor = LOAD_FACTOR;
         this.capacity = DEFAULT_CAPACITY;
-        //noinspection unchecked
         hashTable = new HashTable.Node[capacity];
         entrySet = new EntrySet();
         deleted = new boolean[capacity];
+        this.hash = defauktHash;
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public HashTable(SecondHash hash) {
+        loadFactor = LOAD_FACTOR;
+        this.capacity = DEFAULT_CAPACITY;
+        hashTable = new HashTable.Node[capacity];
+        entrySet = new EntrySet();
+        deleted = new boolean[capacity];
+        this.hash = hash;
     }
 
     public HashTable(int capacity) {
@@ -40,11 +56,25 @@ public class HashTable<K, V> implements Map<K, V> {
         } else {
             this.capacity = DEFAULT_CAPACITY;
         }
-        //noinspection unchecked
-        hashTable = new HashTable.Node[capacity];
+        this.hashTable = new HashTable.Node[this.capacity];
+        deleted = new boolean[this.capacity];
+        this.hash = defauktHash;
     }
 
-    public HashTable(float loadFactor, int capacity) {
+    public HashTable(int capacity, SecondHash hash) {
+        loadFactor = LOAD_FACTOR;
+        if (capacity >= DEFAULT_CAPACITY && capacity
+                <= MAXIMUM_CAPACITY) {
+            this.capacity = capacity;
+        } else {
+            this.capacity = DEFAULT_CAPACITY;
+        }
+        hashTable = new HashTable.Node[this.capacity];
+        deleted = new boolean[this.capacity];
+        this.hash = hash;
+    }
+
+    public HashTable(float loadFactor, int capacity, SecondHash hash) {
         if (loadFactor <= LOAD_FACTOR) {
             this.loadFactor = loadFactor;
         } else {
@@ -57,8 +87,9 @@ public class HashTable<K, V> implements Map<K, V> {
         } else {
             this.capacity = DEFAULT_CAPACITY;
         }
-        //noinspection unchecked
-        hashTable = new HashTable.Node[capacity];
+        deleted = new boolean[this.capacity];
+        hashTable = new HashTable.Node[this.capacity];
+        this.hash = hash;
     }
 
     @Override
@@ -120,7 +151,6 @@ public class HashTable<K, V> implements Map<K, V> {
         if (index < 0) {
             return null;
         }
-        //noinspection unchecked
         return hashTable[index].value;
     }
 
@@ -131,7 +161,7 @@ public class HashTable<K, V> implements Map<K, V> {
         }
 
         float k = (float) ++size / capacity;
-        if (k > loadFactor) {
+        if (k >= loadFactor) {
             rehash();
         }
 
@@ -157,7 +187,7 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     @Override
-    public void putAll(@NotNull Map<? extends K, ? extends V> m) {
+    public void putAll(Map<? extends K, ? extends V> m) {
         for (Map.Entry<? extends K, ? extends V> elem : m.entrySet()) {
             put(elem.getKey(), elem.getValue());
         }
@@ -172,7 +202,7 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     @Override
-    public void forEach(BiConsumer<? super K, ? super V> action) { //сделать упорядоченный
+    public void forEach(BiConsumer<? super K, ? super V> action) {
         Objects.requireNonNull(action);
         Iterator<Entry<K, V>> iterator = entrySet.iterator();
 
@@ -218,20 +248,19 @@ public class HashTable<K, V> implements Map<K, V> {
     private void rehash() {
         int old = capacity;
         capacity *= 2;
-        //noinspection unchecked
-        HashTable<K, V>.Node[] between = new HashTable.Node[capacity];
+        HashTable<K, V>.Node[] between = Arrays.copyOf(hashTable, old);
+        boolean[] del = Arrays.copyOf(deleted, old);
         loadFactor += (1 - loadFactor) / 2;
-        //noinspection unchecked
-        var newDeleted = new boolean[capacity];
+
+        hashTable = new HashTable.Node[capacity];
+        deleted = new boolean[capacity];
         for (int i = 0; i < old; i++) {
-            if (between[i] != null && !deleted[i]) {
-                int index = getFreeIndex(hashTable[i].getKey());
-                between[index] = hashTable[i];
-                newDeleted[index] = true;
+            if (between[i] != null) {
+                int index = getFreeIndex(between[i].getKey());
+                hashTable[index] = between[i];
+                deleted[index] = true;
             }
         }
-        deleted = newDeleted;
-        hashTable = between;
     }
 
     @Override
@@ -250,7 +279,6 @@ public class HashTable<K, V> implements Map<K, V> {
         if (((Map) obj).size() != this.size){
             return false;
         }
-        @SuppressWarnings("unchecked")
         Iterator<Map.Entry<K, V>> iterator = ((Map) obj).entrySet().iterator();
         for (; iterator.hasNext(); ) {
             Map.Entry<K, V> elem = iterator.next();
@@ -268,7 +296,7 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     private int hashCode2(Object key) {
-        return 1 + Math.abs(key.hashCode()) % (capacity - 2);
+        return 1 + Math.abs(hash.hashCode2(key)) % (capacity - 2);
     }
 
     @Override
@@ -296,14 +324,12 @@ public class HashTable<K, V> implements Map<K, V> {
         }
     }
 
-    @NotNull
     @Override
     public Collection<V> values() {
         return values;
     }
 
     private class ValueCollection extends AbstractCollection<V> {
-        @NotNull
         public Iterator<V> iterator() {
             return getIterator(Type.VALUES);
         }
@@ -321,14 +347,12 @@ public class HashTable<K, V> implements Map<K, V> {
         }
     }
 
-    @NotNull
     @Override
     public Set<K> keySet() {
         return keySet;
     }
 
     private class KeySet extends AbstractSet<K> {
-        @NotNull
         public java.util.Iterator<K> iterator() {
             return getIterator(Type.KEYS);
         }
@@ -351,14 +375,12 @@ public class HashTable<K, V> implements Map<K, V> {
     }
 
     ////////////////////////////////////////////////////////////////////////
-    @NotNull
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
         return entrySet;
     }
 
     class EntrySet extends AbstractSet<Map.Entry<K, V>> {
-        @NotNull
         public Iterator<Map.Entry<K, V>> iterator() {
             return getIterator(Type.ENTRY);
         }
@@ -470,7 +492,6 @@ public class HashTable<K, V> implements Map<K, V> {
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof HashTable.Node) {
-                //noinspection unchecked
                 Node node = (Node) obj;
                 return Objects.equals(key, node.key) && Objects.equals(value, node.value);
             }
