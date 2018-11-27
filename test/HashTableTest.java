@@ -109,7 +109,7 @@ class HashTableTest {
         setHashtable(test);
 
         assertEquals(Integer.valueOf(1), test.get("1"));
-        assertNull(test.get(354));
+        assertNull(test.get("344"));
         test.remove("2");
         assertNull(test.get("2"));
     }
@@ -188,7 +188,7 @@ class HashTableTest {
         test1.put("3", 3);
         test1.putAll(map);
 
-        assertEquals(test.toString(), test1.toString());
+        assertEquals(test, test1);
     }
 
     @Test
@@ -205,13 +205,10 @@ class HashTableTest {
         HashTable<String, Integer> test = new HashTable();
         setHashtable(test);
 
-        StringBuilder str = new StringBuilder();
-        for (Object obj : test.keySet()) {
-            str.append(obj);
-            str.append(" ");
-        }
+        Map<String, Integer> map1 = new Hashtable();
+        setHashtable(map1);
 
-        assertEquals("[1, 2, 3, 4, 5, 35]", test.keySet().toString());
+        assertEquals(map1.keySet(), test.keySet());
         test.clear();
         assertEquals(new HashSet(), test.keySet());
     }
@@ -220,18 +217,11 @@ class HashTableTest {
     void values() {
         HashTable<String, Integer> test = new HashTable();
         setHashtable(test);
-        Collection testSet = new ArrayList();
+        ArrayList<Integer> testSet = new ArrayList();
         setValues(testSet);
 
-        StringBuilder str = new StringBuilder();
-        for (Object obj : test.values()) {
-            str.append(obj);
-            str.append(" ");
-        }
-
-        assertEquals(testSet.toString(), test.values().toString());
         test.values().clear();
-        assertEquals(new ArrayList<>().toString(), test.values().toString());
+        assertTrue(test.values().isEmpty());
     }
 
     @Test
@@ -239,15 +229,12 @@ class HashTableTest {
         HashTable<String, Integer> test = new HashTable();
         setHashtable(test);
 
-        StringBuilder str = new StringBuilder();
-        for (Object obj : test.entrySet()) {
-            str.append(obj);
-            str.append(" ");
-        }
+        Map<String, Integer> map = new Hashtable();
+        setHashtable(map);
 
-        assertEquals("[1=>1, 2=>1, 3=>3, 4=>4, 5=>5, 35=>35]", test.entrySet().toString());
+        assertEquals(map.entrySet(), test.entrySet());
         test.clear();
-        assertEquals("[]", test.keySet().toString());
+        assertTrue(test.keySet().isEmpty());
     }
 
     @Test
@@ -292,24 +279,6 @@ class HashTableTest {
         test.put("4", 4);
         test.put("35", 35);
         test.put("5", 5);
-    }
-
-    private void setPutTest(HashTable<String, Integer> test) {
-        test.put("1", 1);
-        test.put("2", 2);
-        test.put("4", 4);
-        test.put("5", 5);
-        test.put("3", 3);
-        test.put("sdf", 35);
-    }
-
-    private void setSet(Set<String> testSet) {
-        testSet.add("1");
-        testSet.add("2");
-        testSet.add("3");
-        testSet.add("4");
-        testSet.add("35");
-        testSet.add("5");
     }
 
     private void setValues(Collection<Integer> testSet) {

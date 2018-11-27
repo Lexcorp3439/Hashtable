@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-@SuppressWarnings("ALL")
 public class HashTable<K, V> implements Map<K, V> {
     private final int DEFAULT_CAPACITY = 8;
     private final int MAXIMUM_CAPACITY = 16;
@@ -17,37 +16,36 @@ public class HashTable<K, V> implements Map<K, V> {
     private float loadFactor;
     private int capacity;
     private int size = 0;
-    private SecondHash hash;
-    private SecondHash defauktHash = new SecondHash() {
-        @Override
-        public int hashCode2(Object value) {
-            K key = (K) value;
-            return key.hashCode();
-        }
-    };
+    private SecondHash<K> hash;
+    private SecondHash<K> defaultHash = Object::hashCode;
 
     private Node[] hashTable;
     private boolean[] deleted;
 
+    @SuppressWarnings("WeakerAccess")
     public HashTable() {
         loadFactor = LOAD_FACTOR;
         this.capacity = DEFAULT_CAPACITY;
+
+        //noinspection unchecked
         hashTable = new HashTable.Node[capacity];
         entrySet = new EntrySet();
         deleted = new boolean[capacity];
-        this.hash = defauktHash;
+        this.hash = defaultHash;
     }
 
     @SuppressWarnings("WeakerAccess")
-    public HashTable(SecondHash hash) {
+    public HashTable(SecondHash<K> hash) {
         loadFactor = LOAD_FACTOR;
         this.capacity = DEFAULT_CAPACITY;
+        //noinspection unchecked
         hashTable = new HashTable.Node[capacity];
         entrySet = new EntrySet();
         deleted = new boolean[capacity];
         this.hash = hash;
     }
 
+    @SuppressWarnings("unused")
     public HashTable(int capacity) {
         loadFactor = LOAD_FACTOR;
         if (capacity >= DEFAULT_CAPACITY && capacity
@@ -56,12 +54,14 @@ public class HashTable<K, V> implements Map<K, V> {
         } else {
             this.capacity = DEFAULT_CAPACITY;
         }
+        //noinspection unchecked
         this.hashTable = new HashTable.Node[this.capacity];
         deleted = new boolean[this.capacity];
-        this.hash = defauktHash;
+        this.hash = defaultHash;
     }
 
-    public HashTable(int capacity, SecondHash hash) {
+    @SuppressWarnings("unused")
+    public HashTable(int capacity, SecondHash<K> hash) {
         loadFactor = LOAD_FACTOR;
         if (capacity >= DEFAULT_CAPACITY && capacity
                 <= MAXIMUM_CAPACITY) {
@@ -69,12 +69,14 @@ public class HashTable<K, V> implements Map<K, V> {
         } else {
             this.capacity = DEFAULT_CAPACITY;
         }
+        //noinspection unchecked
         hashTable = new HashTable.Node[this.capacity];
         deleted = new boolean[this.capacity];
         this.hash = hash;
     }
 
-    public HashTable(float loadFactor, int capacity, SecondHash hash) {
+    @SuppressWarnings("unused")
+    public HashTable(float loadFactor, int capacity, SecondHash<K> hash) {
         if (loadFactor <= LOAD_FACTOR) {
             this.loadFactor = loadFactor;
         } else {
@@ -88,6 +90,7 @@ public class HashTable<K, V> implements Map<K, V> {
             this.capacity = DEFAULT_CAPACITY;
         }
         deleted = new boolean[this.capacity];
+        //noinspection unchecked
         hashTable = new HashTable.Node[this.capacity];
         this.hash = hash;
     }
@@ -104,8 +107,8 @@ public class HashTable<K, V> implements Map<K, V> {
 
     private int contains(Object key) {
         int n = -1;
-        int hash1 = hashCode1(key);
-        int hash2 = hashCode2(key);
+        @SuppressWarnings("unchecked") int hash1 = hashCode1((K)key);
+        @SuppressWarnings("unchecked") int hash2 = hashCode2((K)key);
 
         while (n != capacity - 1) {
             n++;
@@ -249,9 +252,9 @@ public class HashTable<K, V> implements Map<K, V> {
         int old = capacity;
         capacity *= 2;
         HashTable<K, V>.Node[] between = Arrays.copyOf(hashTable, old);
-        boolean[] del = Arrays.copyOf(deleted, old);
         loadFactor += (1 - loadFactor) / 2;
 
+        //noinspection unchecked
         hashTable = new HashTable.Node[capacity];
         deleted = new boolean[capacity];
         for (int i = 0; i < old; i++) {
@@ -279,9 +282,9 @@ public class HashTable<K, V> implements Map<K, V> {
         if (((Map) obj).size() != this.size){
             return false;
         }
-        Iterator<Map.Entry<K, V>> iterator = ((Map) obj).entrySet().iterator();
+        Iterator iterator = ((Map) obj).entrySet().iterator();
         for (; iterator.hasNext(); ) {
-            Map.Entry<K, V> elem = iterator.next();
+            @SuppressWarnings("unchecked") Map.Entry<K, V> elem = (Map.Entry<K, V>)iterator.next();
             K key = elem.getKey();
             V value = elem.getValue();
             if (!containsKey(key) || get(key) != value) {
@@ -291,11 +294,11 @@ public class HashTable<K, V> implements Map<K, V> {
         return true;
     }
 
-    private int hashCode1(Object key) {
+    private int hashCode1(K key) {
         return Math.abs(key.hashCode()) % (capacity - 1);
     }
 
-    private int hashCode2(Object key) {
+    private int hashCode2(K key) {
         return 1 + Math.abs(hash.hashCode2(key)) % (capacity - 2);
     }
 
@@ -492,7 +495,7 @@ public class HashTable<K, V> implements Map<K, V> {
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof HashTable.Node) {
-                Node node = (Node) obj;
+                HashTable.Node node = (HashTable.Node) obj;
                 return Objects.equals(key, node.key) && Objects.equals(value, node.value);
             }
             return false;

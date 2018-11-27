@@ -1,3 +1,3 @@
-public interface SecondHash {
-    int hashCode2(Object value);
+public interface SecondHash <T>{
+    int hashCode2(T value);
 }
