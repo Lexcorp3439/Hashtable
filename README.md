@@ -1,2 +1,1 @@
-# Hashtable
-My hashtable with doube hash
+# Hashtable with double hashing
